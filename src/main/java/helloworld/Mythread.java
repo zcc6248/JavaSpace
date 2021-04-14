@@ -6,7 +6,7 @@ public class Mythread {
         new Thread(td).start();
 
         while(true){
-        	System.out.println(td.isFlag());
+//        	System.out.println(td.isFlag());
             if(td.isFlag()){
                 System.out.println("########");
                 break;
@@ -17,7 +17,7 @@ public class Mythread {
 }
 
 class ThreadDemo implements Runnable{
-    private boolean flag = false;
+    private volatile boolean flag = false;
 
     public void run(){
         try{

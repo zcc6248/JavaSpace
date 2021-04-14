@@ -4,19 +4,19 @@ package DesignMode.Strategy;
  * 策略模式
  * */
 public class Strategy_dog {
-    private String name;
-    private int age;
+    public String name;
+    public int weight;
 
     @Override
     public String toString() {
         return "Strategy_dog{" +
                 "name='" + name + '\'' +
-                ", age=" + age +
+                ", weight=" + weight +
                 '}';
     }
 
-    public Strategy_dog(String name, int age) {
+    public Strategy_dog(String name, int weight) {
         this.name = name;
-        this.age = age;
+        this.weight = weight;
     }
 }

@@ -17,15 +17,20 @@ import java.util.Arrays;
 
 public class Strategy {
     public static void main(String[] args) {
-        Sorter<Strategy_cat> so = new Sorter<>();
-        Strategy_cat[] arr = {new Strategy_cat("c1", 18), new Strategy_cat("c3", 1), new Strategy_cat("c2", 12)};
+        Sorter<Strategy_cat> cat = new Sorter<>();
+        Strategy_cat[] arrcat = {new Strategy_cat("c1", 18), new Strategy_cat("c3", 1), new Strategy_cat("c2", 12)};
 //        so.sorter(arr, new ComparatorAge());            //每次都要new 可使用工厂模式将此类比较策略实现单例管理对象初始化
-        so.sorter(arr, EStrategyFactory.getValue("ComparatorAge"));
-/*        so.sorter(arr, (o1, o2)->{
+        cat.sorter(arrcat, EStrategyFactory.getValue("ComparatorAge"));
+/*        so.sorter(arrcat, (o1, o2)->{
             if (((Strategy_cat) o1).age < ((Strategy_cat) o2).age) return -1;
             else if(((Strategy_cat) o1).age > ((Strategy_cat) o2).age) return 1;
             return 0;
         });*/
-        System.out.println(Arrays.toString(arr));
+        System.out.println(Arrays.toString(arrcat));
+
+        Sorter<Strategy_dog> dog = new Sorter<>();
+        Strategy_dog[] arrdog = {new Strategy_dog("d1", 100), new Strategy_dog("d3", 50), new Strategy_dog("d2", 120)};
+        dog.sorter(arrdog, EStrategyFactory.getValue("ComparatorWeight"));
+        System.out.println(Arrays.toString(arrdog));
     }
 }

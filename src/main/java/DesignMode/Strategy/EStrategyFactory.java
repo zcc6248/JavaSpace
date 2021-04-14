@@ -1,18 +1,17 @@
 package DesignMode.Strategy;
 
 public enum EStrategyFactory {
-    ComparratorAge("ComparatorAge", new ComparatorAge());
-
-
+    ComparratorAge("ComparatorAge", new ComparatorAge()),
+    ComparratorWeight("ComparatorWeight", new ComparatorWeight());
 
 
 
     private String key;
     private Comparator value;
 
-    EStrategyFactory(String age, Comparator comparator) {
-        this.key = age;
-        this.value = comparator;
+    EStrategyFactory(String key, Comparator value) {
+        this.key = key;
+        this.value = value;
     }
 
     public static Comparator getValue(String str){
