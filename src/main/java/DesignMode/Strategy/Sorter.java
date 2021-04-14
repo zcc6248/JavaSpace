@@ -1,9 +1,9 @@
 package DesignMode.Strategy;
 
-import java.util.Comparator;
-
+//此函数以后不会变
+//满足动态需求
 public class Sorter<T> {
-    public void sorter(T[] data, Comparator com){
+    public void sorter(T[] data, Comparator<T> com){
         int i, j;
         for (i = 1; i < data.length; i++)
         {
