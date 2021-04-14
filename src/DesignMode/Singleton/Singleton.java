@@ -1,5 +1,8 @@
 package DesignMode.Singleton;
 
+/*
+* 单例模式
+* */
 public class Singleton {
     private static final Singleton instance = new Singleton();
 
