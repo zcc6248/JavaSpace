@@ -1,5 +1,5 @@
 package DesignMode.Strategy;
 
-public interface Comparator<T> {
+public interface IComparator<T> {
     int compare(T o1, T o2);
 }

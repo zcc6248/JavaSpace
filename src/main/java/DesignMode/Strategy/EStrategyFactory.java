@@ -7,14 +7,14 @@ public enum EStrategyFactory {
 
 
     private String key;
-    private Comparator value;
+    private IComparator value;
 
-    EStrategyFactory(String key, Comparator value) {
+    EStrategyFactory(String key, IComparator value) {
         this.key = key;
         this.value = value;
     }
 
-    public static Comparator getValue(String str){
+    public static IComparator getValue(String str){
         EStrategyFactory[] es = values();
         for(EStrategyFactory item : es){
             if (item.key.equals(str)){

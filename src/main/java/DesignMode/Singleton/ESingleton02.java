@@ -4,7 +4,7 @@ package DesignMode.Singleton;
 /*
 * 枚举单例，可防止反序列
 * */
-public enum Singleton02 {
+public enum ESingleton02 {
 
     instance;
 
@@ -15,7 +15,7 @@ public enum Singleton02 {
     public static void main(String[] args) {
         for (int i = 0; i < 100; i++) {
             new Thread(()->{
-                Singleton02.instance.hello();
+                ESingleton02.instance.hello();
             }).start();
         }
     }

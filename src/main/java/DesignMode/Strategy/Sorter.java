@@ -3,7 +3,7 @@ package DesignMode.Strategy;
 //此函数以后不会变
 //满足动态需求
 public class Sorter<T> {
-    public void sorter(T[] data, Comparator<T> com){
+    public void sorter(T[] data, IComparator<T> com){
         int i, j;
         for (i = 1; i < data.length; i++)
         {
