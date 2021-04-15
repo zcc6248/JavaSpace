@@ -19,7 +19,7 @@ enum EAchievementType{
 
 //计数器
 class Counter{
-    //成就id
+    //成就类型
     EAchievementType type;
     //当前完成度
     int number;
@@ -30,10 +30,11 @@ class Counter{
     }
 }
 
+//定义成就抽象方法
 abstract class Achievement{
     //计数器与对应的目标数
     public HashMap<Counter, Integer> counters = new HashMap<>();
-
+    //奖励
     public abstract void award();
 }
 
@@ -59,8 +60,8 @@ class PayAchi extends Achievement{
     }
 }
 
-class LogAndPay extends Achievement{
-    public LogAndPay() {
+class LogAndPayAchi extends Achievement{
+    public LogAndPayAchi() {
         counters.put(new Counter(EAchievementType.Paynum, 0), 50);
         counters.put(new Counter(EAchievementType.logday, 0), 5);
     }
@@ -73,29 +74,30 @@ class LogAndPay extends Achievement{
 
 //成就管理类
 class AchievementManage{
-    List<Achievement> a = new ArrayList<>();
+    List<Achievement> observer = new ArrayList<>();
 
     public AchievementManage addAchi(Achievement ea){
-        a.add(ea);
+        observer.add(ea);
         return this;
     }
 
     public void incr(EAchievementType ea, int i){
-        Iterator<Achievement> iter = a.iterator();
+        Iterator<Achievement> iter = observer.iterator();
         if(!iter.hasNext()){
             System.out.println("无成就");
+            return;
         }
         while (iter.hasNext()){
             Achievement item = iter.next();
-            for(Map.Entry<Counter, Integer> ite: item.counters.entrySet()){
-                Counter c = ite.getKey();
+            for(Map.Entry<Counter, Integer> achi: item.counters.entrySet()){
+                Counter c = achi.getKey();
                 if(c.type.equals(ea)){
-                    if((c.number += i) >= ite.getValue()){
+                    if((c.number += i) >= achi.getValue()){
                         //遍历此成就集合，看是否全部完成
                         boolean isend = true;
-                        for(Map.Entry<Counter, Integer> pa: item.counters.entrySet()) {
-                            Counter ci = pa.getKey();
-                            if(ci.number < pa.getValue()){
+                        for(Map.Entry<Counter, Integer> param: item.counters.entrySet()) {
+                            Counter ci = param.getKey();
+                            if(ci.number < param.getValue()){
                                 isend = false;
                                 break;
                             }
@@ -117,7 +119,7 @@ class Observer01{
         //实例化三个观察对象
         Achievement day = new dayAchi();
         Achievement pad = new PayAchi();
-        Achievement dayandpad = new LogAndPay();
+        Achievement dayandpad = new LogAndPayAchi();
         //实例化管理器
         AchievementManage ma = new AchievementManage();
         //添加观察者
