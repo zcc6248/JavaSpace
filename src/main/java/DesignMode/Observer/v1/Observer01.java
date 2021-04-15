@@ -11,6 +11,8 @@ import java.util.*;
 *   3、登录50天，充值50元，获得刑天斧
 *
 * */
+
+//定义计数器枚举
 enum EAchievementType{
     logday, Paynum
 }
