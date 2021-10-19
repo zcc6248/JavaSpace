@@ -1,4 +1,4 @@
-package helloworld;
+package test;
 
 public class shuitong {
 
@@ -26,7 +26,6 @@ public class shuitong {
 		for(int i=param.length - 2;i>0;i--) {
 			R[i] = Math.max(param[i], param[i + 1]);
 		}
-		
 		int shui = 0;
 		for(int i = 1; i<param.length-1;i++)
 		{

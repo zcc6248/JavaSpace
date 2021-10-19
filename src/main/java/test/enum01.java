@@ -1,4 +1,4 @@
-package helloworld;
+package test;
 
 enum CarTypeEnum {
 
@@ -7,7 +7,6 @@ enum CarTypeEnum {
     CAR_TYPE_AUDI("audi", "奥迪");
 
     private String type;
-
     private String desc;
 
     private CarTypeEnum(String type, String desc) {

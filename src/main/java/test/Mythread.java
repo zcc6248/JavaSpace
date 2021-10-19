@@ -1,4 +1,4 @@
-package helloworld;
+package test;
 
 public class Mythread {
 	public static void main(String[] args){
