@@ -1,10 +1,4 @@
-package Proxy;
-
-import DesignMode.Factory.FactoryMethod.Bird;
-
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
+package DesignMode.Proxy;
 
 public class staticProxy {
     public static void main(String[] args) {

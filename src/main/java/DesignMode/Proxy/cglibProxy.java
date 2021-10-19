@@ -1,4 +1,4 @@
-package Proxy;
+package DesignMode.Proxy;
 
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.MethodInterceptor;
@@ -11,7 +11,7 @@ public class cglibProxy {
         brid brid = new brid();
         brid.fly();
         Enhancer enhancer = new Enhancer();
-        enhancer.setSuperclass(Proxy.brid.class);
+        enhancer.setSuperclass(DesignMode.Proxy.brid.class);
         enhancer.setCallback(new MethodInterceptor() {
             @Override
             public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
