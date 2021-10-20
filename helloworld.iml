@@ -5,7 +5,7 @@
       <configuration />
     </facet>
   </component>
-  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_13">
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_12">
     <output url="file://$MODULE_DIR$/target/classes" />
     <output-test url="file://$MODULE_DIR$/target/test-classes" />
     <content url="file://$MODULE_DIR$">
@@ -24,5 +24,6 @@
     <orderEntry type="library" name="Maven: org.springframework:spring-expression:5.3.6" level="project" />
     <orderEntry type="library" name="Maven: cglib:cglib:3.3.0" level="project" />
     <orderEntry type="library" name="Maven: org.ow2.asm:asm:7.1" level="project" />
+    <orderEntry type="library" name="Maven: io.netty:netty-all:4.1.63.Final" level="project" />
   </component>
 </module>
