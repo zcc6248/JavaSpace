@@ -1,5 +1,7 @@
 package IO;
 
+import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -7,6 +9,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.CharsetUtil;
 
+import javax.naming.InitialContext;
 import java.net.InetSocketAddress;
 
 /**
@@ -23,15 +26,33 @@ public class Netty {
     }
 
     public static void start(){
-        NioEventLoopGroup eventExecutors = new NioEventLoopGroup(1);
-//        eventExecutors.register()
-        NioServerSocketChannel ser = new NioServerSocketChannel();
+//        //自己实现api调用
+//        NioEventLoopGroup eventExecutors = new NioEventLoopGroup(1);
+//        NioServerSocketChannel ser = new NioServerSocketChannel();
+//
+//        ChannelPipeline pipeline = ser.pipeline();
+//        pipeline.addLast(new acceptHandler(eventExecutors, new initHandler()));
+//        eventExecutors.register(ser);
+//        ChannelFuture bind = ser.bind(new InetSocketAddress(9090));
 
-        ChannelPipeline pipeline = ser.pipeline();
-        pipeline.addLast(new acceptHandler(eventExecutors, new initHandler()));
-        eventExecutors.register(ser);
+        //使用bootstrap
+        ServerBootstrap bootstrap = new ServerBootstrap();
+        ChannelFuture bind = bootstrap.group(new NioEventLoopGroup())
+                .channel(NioServerSocketChannel.class)
+                .handler(new ChannelInboundHandlerAdapter(){
+                    @Override
+                    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+                        System.out.println("register ...........");
+                    }
 
-        ChannelFuture bind = ser.bind(new InetSocketAddress(9090));
+                    @Override
+                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                        super.channelRead(ctx, msg);
+                    }
+                })
+                .childHandler(new initHandler())
+                .bind(new InetSocketAddress(9090));
+
         try {
             bind.sync().channel().closeFuture().sync();
         } catch (InterruptedException e) {
