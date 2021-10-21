@@ -1,15 +1,15 @@
 package RPCTest;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import org.springframework.ui.context.Theme;
 import org.w3c.dom.css.Counter;
 
 import java.io.*;
@@ -29,8 +29,41 @@ import java.util.concurrent.CountDownLatch;
 public class MyRPC {
 
     public static void main(String[] args) {
-        car ca = proxyGet(car.class);
-        ca.hello("你好");
+        new Thread(()->{
+            serverStart();
+        }).start();
+        System.out.println("服务器启动...........");
+        int size =20;
+        Thread[] t = new Thread[size];
+        for (int i = 0; i < size; i++) {
+            t[i] = new Thread(()->{
+                car ca = proxyGet(car.class);
+                ca.hello("你好");
+            });
+        }
+        for (int i = 0; i < t.length; i++) {
+            t[i].start();
+        }
+    }
+
+    private static void serverStart(){
+        NioEventLoopGroup eventExecutors = new NioEventLoopGroup(1);
+        ServerBootstrap serverBootstrap = new ServerBootstrap();
+        ChannelFuture bind = serverBootstrap.group(eventExecutors)
+                .channel(NioServerSocketChannel.class)
+                .childHandler(new ChannelInitializer<NioSocketChannel>() {
+                    @Override
+                    protected void initChannel(NioSocketChannel ch) throws Exception {
+                        ChannelPipeline pipeline = ch.pipeline();
+                        pipeline.addLast(new accepHandler());
+                    }
+                })
+                .bind(new InetSocketAddress(9090));
+        try {
+            bind.sync().channel().closeFuture().sync();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     private static <T>T proxyGet(Class<T> inter) {
@@ -48,12 +81,13 @@ public class MyRPC {
                 outputStream = new ObjectOutputStream(byteArrayOutputStream);
                 outputStream.writeObject(header);
                 byte[] head = byteArrayOutputStream.toByteArray();
+                System.out.println("hhhhhhhhhhhhhh" + head.length);
 
 //                ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(head));
 //                header o = (header)objectInputStream.readObject();
 //                System.out.println(o.toString());
 
-                NioSocketChannel ch = clientFactory.instance.getClient(new InetSocketAddress("192.168.1.147", 9090));
+                NioSocketChannel ch = clientFactory.instance.getClient(new InetSocketAddress("localhost", 9090));
 
                 ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.directBuffer(body.length + head.length);
                 byteBuf.writeBytes(head);
@@ -126,8 +160,14 @@ enum  clientFactory{
         Bootstrap bootstrap = new Bootstrap();
         ChannelFuture bind = bootstrap.group(group)
                 .channel(NioSocketChannel.class)
-                .handler(new readHander())
-                .bind(address);
+                .handler(new ChannelInitializer<NioSocketChannel>() {
+                    @Override
+                    protected void initChannel(NioSocketChannel ch) throws Exception {
+                        ChannelPipeline pipeline = ch.pipeline();
+                        pipeline.addLast(new readHandler());
+                    }
+                })
+                .connect(address);
         try {
             return (NioSocketChannel) bind.sync().channel();
         } catch (InterruptedException e) {
@@ -137,18 +177,35 @@ enum  clientFactory{
     }
 }
 
-class readHander extends ChannelInboundHandlerAdapter {
+class readHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        super.channelRead(ctx, msg);
+//        super.channelRead(ctx, msg);
         ByteBuf byteBuf = (ByteBuf) msg;
-        if (byteBuf.readableBytes() >= 110){
-            byte[] b = new byte[110];
+        if (byteBuf.readableBytes() >= 87){
+            byte[] b = new byte[87];
             byteBuf.readBytes(b);
-                ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(b));
-                header o = (header)objectInputStream.readObject();
-                System.out.println(o.toString());
+            ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(b));
+            header o = (header)objectInputStream.readObject();
+            System.out.println("client"+o);
+            staticUUID.run(o.requestId);
         }
+    }
+}
+
+class accepHandler extends ChannelInboundHandlerAdapter{
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        ByteBuf date = (ByteBuf) msg;
+        ByteBuf result = date.copy();
+        if (date.readableBytes() >= 87){
+            byte[] b = new byte[87];
+            date.readBytes(b);
+            ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(b));
+            header header = (header) objectInputStream.readObject();
+            System.out.println("server" + header);
+        }
+        ctx.writeAndFlush(result);
     }
 }
 
