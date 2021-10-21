@@ -4,6 +4,7 @@ package DesignMode.Singleton;
 * 单例模式
 * */
 public class Singleton {
+    //饿汉式
     private static final Singleton instance = new Singleton();
 
     public static Singleton getInstance() {

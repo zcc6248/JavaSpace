@@ -5,7 +5,7 @@ package DesignMode.Singleton;
 * 枚举单例，可防止反序列
 * */
 public enum ESingleton02 {
-
+    //枚举类
     instance;
 
     public void hello(){

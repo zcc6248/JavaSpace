@@ -4,6 +4,7 @@ package DesignMode.Singleton;
 * DCL双重锁
 * */
 public class Singleton01 {
+    //需要家volatile 防止指令重排序
     private static volatile Singleton01 instance;
     private Singleton01() {
     }
