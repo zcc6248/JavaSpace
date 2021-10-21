@@ -19,12 +19,10 @@ import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
 import java.net.InterfaceAddress;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MyRPC {
 
@@ -33,7 +31,7 @@ public class MyRPC {
             serverStart();
         }).start();
         System.out.println("服务器启动...........");
-        int size =20;
+        int size =100;
         Thread[] t = new Thread[size];
         for (int i = 0; i < size; i++) {
             t[i] = new Thread(()->{
@@ -44,6 +42,19 @@ public class MyRPC {
         for (int i = 0; i < t.length; i++) {
             t[i].start();
         }
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Collection<clientPool> values = clientFactory.instance.outboxs.values();
+        Iterator<clientPool> iterator = values.iterator();
+        while (iterator.hasNext()){
+            clientPool next = iterator.next();
+            System.out.println(next.clients.length);
+        }
+        System.out.println("++++++++++++++++++++++++++");
+        System.out.println(staticUUID.getRepeatNum());
     }
 
     private static void serverStart(){
@@ -112,14 +123,23 @@ public class MyRPC {
 }
 
 class staticUUID{
+    private static AtomicInteger repeatNum = new AtomicInteger(0);
     private static ConcurrentHashMap<Long, Runnable> map = new ConcurrentHashMap<Long, Runnable>();
 
     public static void add(Long requestid, Runnable r){
         map.putIfAbsent(requestid, r);
     }
     public static void run(Long requestid){
-        map.get(requestid).run();
-        map.remove(requestid);
+        Runnable runnable = map.get(requestid);
+        if(runnable != null){
+            runnable.run();
+            map.remove(requestid);
+        }else {
+            repeatNum.incrementAndGet();
+        }
+    }
+    public static int getRepeatNum(){
+        return repeatNum.get();
     }
 }
 
@@ -147,9 +167,12 @@ enum  clientFactory{
             outboxs.put(address, new clientPool(poolSize));
         }
         clientPool clientPool = outboxs.get(address);
-        NioSocketChannel cha = clientPool.clients[random.nextInt(poolSize)];
+        int i = random.nextInt(poolSize);
+        NioSocketChannel cha = clientPool.clients[i];
         if (cha == null){
-            return createNeety(address);
+            NioSocketChannel neety = createNeety(address);
+            clientPool.clients[i] = neety;
+            return neety;
         }else {
             return cha;
         }
