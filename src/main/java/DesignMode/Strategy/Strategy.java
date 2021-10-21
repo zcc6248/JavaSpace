@@ -21,6 +21,7 @@ public class Strategy {
         Strategy_cat[] arr = {new Strategy_cat("c1", 18), new Strategy_cat("c3", 1), new Strategy_cat("c2", 12)};
 //        so.sorter(arr, new ComparatorAge());            //每次都要new 可使用工厂模式将此类比较策略实现单例管理对象初始化
         so.sorter(arr, EStrategyFactory.getValue("ComparatorAge"));
+        
 /*        so.sorter(arr, (o1, o2)->{
             if (((Strategy_cat) o1).age < ((Strategy_cat) o2).age) return -1;
             else if(((Strategy_cat) o1).age > ((Strategy_cat) o2).age) return 1;
