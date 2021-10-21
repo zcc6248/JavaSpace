@@ -20,7 +20,7 @@ import java.util.*;
 
 //定义计数器枚举
 enum EAchievementType{
-    logday, Paynum, Kill
+    logday, Paynum, Kill, FirstPay
 }
 
 //计数器
@@ -69,7 +69,7 @@ class PayAchi extends Achievement{
 //新加对象
 class OnePay extends Achievement{
     public OnePay() {
-        counters.put(new Counter(EAchievementType.Paynum, 0), 6);
+        counters.put(new Counter(EAchievementType.FirstPay, 0), 6);
     }
 
     @Override
@@ -165,8 +165,9 @@ class Observer02{
         ma.incr(EAchievementType.logday, 10);
         System.out.println("============累计登录49天============");
         ma.incr(EAchievementType.logday, 39);
-        System.out.println("============累计充值10元============");
+        System.out.println("============首充值10元============");
         ma.incr(EAchievementType.Paynum, 10);
+        ma.incr(EAchievementType.FirstPay, 10);
         System.out.println("============累计登录50天。累计充值90元============");
         ma.incr(EAchievementType.logday, 1);
         ma.incr(EAchievementType.Paynum, 80);
