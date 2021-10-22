@@ -4,21 +4,17 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import org.springframework.ui.context.Theme;
-import org.w3c.dom.css.Counter;
+import io.netty.handler.codec.ByteToMessageDecoder;
 
 import java.io.*;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
-import java.net.InterfaceAddress;
-import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -31,12 +27,13 @@ public class MyRPC {
             serverStart();
         }).start();
         System.out.println("服务器启动...........");
-        int size =100;
+        int size = 2;
         Thread[] t = new Thread[size];
+        AtomicInteger j = new AtomicInteger(0);
         for (int i = 0; i < size; i++) {
             t[i] = new Thread(()->{
                 car ca = proxyGet(car.class);
-                ca.hello("你好");
+                ca.hello("你好" + j.getAndIncrement());
             });
         }
         for (int i = 0; i < t.length; i++) {
@@ -53,7 +50,7 @@ public class MyRPC {
             clientPool next = iterator.next();
             System.out.println(next.clients.length);
         }
-        System.out.println("++++++++++++++++++++++++++");
+        System.out.println("=======================");
         System.out.println(staticUUID.getRepeatNum());
     }
 
@@ -66,7 +63,8 @@ public class MyRPC {
                     @Override
                     protected void initChannel(NioSocketChannel ch) throws Exception {
                         ChannelPipeline pipeline = ch.pipeline();
-                        pipeline.addLast(new accepHandler());
+                        pipeline.addLast(new requestDecode());
+                        pipeline.addLast(new requestHandler());
                     }
                 })
                 .bind(new InetSocketAddress(9090));
@@ -82,16 +80,18 @@ public class MyRPC {
             @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 content cont = new content(inter.getName(), method.getName(), method.getParameterTypes(), args);
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                ObjectOutputStream outputStream = new ObjectOutputStream(byteArrayOutputStream);
-                outputStream.writeObject(cont);
-                byte[] body = byteArrayOutputStream.toByteArray();
+//                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+//                ObjectOutputStream outputStream = new ObjectOutputStream(byteArrayOutputStream);
+//                outputStream.writeObject(cont);
+//                byte[] body = byteArrayOutputStream.toByteArray();
+                byte[] body = MessageSer.messageEncode(cont);
 
                 header header = createHeader(body);
-                byteArrayOutputStream.reset();
-                outputStream = new ObjectOutputStream(byteArrayOutputStream);
-                outputStream.writeObject(header);
-                byte[] head = byteArrayOutputStream.toByteArray();
+//                byteArrayOutputStream.reset();
+//                outputStream = new ObjectOutputStream(byteArrayOutputStream);
+//                outputStream.writeObject(header);
+//                byte[] head = byteArrayOutputStream.toByteArray();
+                byte[] head = MessageSer.messageEncode(header);
                 System.out.println("hhhhhhhhhhhhhh" + head.length);
 
 //                ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(head));
@@ -157,17 +157,19 @@ class clientPool {
 enum  clientFactory{
     instance;
 
-    ConcurrentHashMap<InetSocketAddress, clientPool> outboxs = new ConcurrentHashMap<>();
+    volatile ConcurrentHashMap<InetSocketAddress, clientPool> outboxs = new ConcurrentHashMap<>();
 
     Random random = new Random();
     int poolSize = 1;
+    int maxnum = 1;
 
     public synchronized NioSocketChannel getClient(InetSocketAddress address){
         if (outboxs.get(address) == null){
             outboxs.put(address, new clientPool(poolSize));
         }
         clientPool clientPool = outboxs.get(address);
-        int i = random.nextInt(poolSize);
+        int i = random.nextInt(clientPool.clients.length);
+        System.out.println(clientPool.clients.length + " " + Thread.currentThread().getName() + "连接数：" + i);
         NioSocketChannel cha = clientPool.clients[i];
         if (cha == null){
             NioSocketChannel neety = createNeety(address);
@@ -200,35 +202,81 @@ enum  clientFactory{
     }
 }
 
+class requestDecode extends ByteToMessageDecoder{
+
+    @Override
+    protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf data, List<Object> list) throws Exception {
+        ByteBuf re = data.copy();
+        while (data.readableBytes() >= 87){
+            byte[] b = new byte[87];
+            data.getBytes(data.readerIndex(), b);
+//            ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(b));
+//            header header = (header) objectInputStream.readObject();
+            header header = MessageSer.messageDecode(b);
+            System.out.println("server" + header);
+
+            if (data.readableBytes() >= header.dataLength){
+                data.readBytes(87);
+                byte[] by  = new byte[(int) header.dataLength];
+                data.readBytes(by);
+//                ObjectInputStream ob = new ObjectInputStream(new ByteArrayInputStream(by));
+//                content body = (content)ob.readObject();
+                content body = MessageSer.messageDecode(by);
+                System.out.println("server" + body);
+                list.add(new requestMQ(header, body));
+            }else {
+                break;
+            }
+        }
+        channelHandlerContext.channel().writeAndFlush(re);
+    }
+}
+
+class requestMQ{
+    header head;
+    content body;
+
+    public requestMQ(header head, content body) {
+        this.head = head;
+        this.body = body;
+    }
+}
+
 class readHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 //        super.channelRead(ctx, msg);
         ByteBuf byteBuf = (ByteBuf) msg;
-        if (byteBuf.readableBytes() >= 87){
+        while (byteBuf.readableBytes() >= 87){
             byte[] b = new byte[87];
-            byteBuf.readBytes(b);
-            ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(b));
-            header o = (header)objectInputStream.readObject();
+            byteBuf.getBytes(byteBuf.readerIndex(), b);
+//            ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(b));
+//            header o = (header)objectInputStream.readObject();
+            header o = MessageSer.messageDecode(b);
             System.out.println("client"+o);
-            staticUUID.run(o.requestId);
+
+            if (byteBuf.readableBytes() >= o.dataLength){
+                byteBuf.readBytes(87);
+                byte[] by  = new byte[(int) o.dataLength];
+                byteBuf.readBytes(by);
+//                ObjectInputStream ob = new ObjectInputStream(new ByteArrayInputStream(by));
+//                content body = (content)ob.readObject();
+                content body = MessageSer.messageDecode(by);
+                System.out.println("client" + body);
+                staticUUID.run(o.requestId);
+            }else {
+                break;
+            }
         }
     }
 }
 
-class accepHandler extends ChannelInboundHandlerAdapter{
+class requestHandler extends ChannelInboundHandlerAdapter{
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ByteBuf date = (ByteBuf) msg;
-        ByteBuf result = date.copy();
-        if (date.readableBytes() >= 87){
-            byte[] b = new byte[87];
-            date.readBytes(b);
-            ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(b));
-            header header = (header) objectInputStream.readObject();
-            System.out.println("server" + header);
-        }
-        ctx.writeAndFlush(result);
+        requestMQ data = (requestMQ) msg;
+//        System.out.println(data.head);
+//        System.out.println(data.body);
     }
 }
 
