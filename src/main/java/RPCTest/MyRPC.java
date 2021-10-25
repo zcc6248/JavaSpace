@@ -4,6 +4,8 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.Unpooled;
+import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -16,24 +18,28 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MyRPC {
 
+    private static int client_num = 50;
+    private static int LoopGroup_num = 10;
     public static void main(String[] args) {
+
         new Thread(()->{
             serverStart();
         }).start();
         System.out.println("服务器启动...........");
-        int size = 2;
-        Thread[] t = new Thread[size];
+        Thread[] t = new Thread[client_num];
         AtomicInteger j = new AtomicInteger(0);
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < client_num; i++) {
             t[i] = new Thread(()->{
                 car ca = proxyGet(car.class);
-                ca.hello("你好" + j.getAndIncrement());
+                String arg = "你好官方电话发给" + j.getAndIncrement();
+                String hello = ca.hello(arg);
+                System.out.println(hello + "    client:" + arg);
             });
         }
         for (int i = 0; i < t.length; i++) {
@@ -44,20 +50,22 @@ public class MyRPC {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        Collection<clientPool> values = clientFactory.instance.outboxs.values();
-        Iterator<clientPool> iterator = values.iterator();
-        while (iterator.hasNext()){
-            clientPool next = iterator.next();
-            System.out.println(next.clients.length);
-        }
+
+        Enumeration<InetSocketAddress> keys = clientFactory.instance.outboxs.keys();
+        Iterator<InetSocketAddress> iterator = keys.asIterator();
         System.out.println("=======================");
-        System.out.println(staticUUID.getRepeatNum());
+        while (iterator.hasNext()){
+            InetSocketAddress next = iterator.next();
+            clientPool clientPool = clientFactory.instance.outboxs.get(next);
+            System.out.println(next + "连接池数量: " + clientPool.clients.length);
+        }
+        System.out.println("requestid重复数量：" + staticUUID.getRepeatNum());
     }
 
     private static void serverStart(){
-        NioEventLoopGroup eventExecutors = new NioEventLoopGroup(1);
+        NioEventLoopGroup eventExecutors = new NioEventLoopGroup(LoopGroup_num);
         ServerBootstrap serverBootstrap = new ServerBootstrap();
-        ChannelFuture bind = serverBootstrap.group(eventExecutors)
+        ChannelFuture bind = serverBootstrap.group(eventExecutors, eventExecutors)
                 .channel(NioServerSocketChannel.class)
                 .childHandler(new ChannelInitializer<NioSocketChannel>() {
                     @Override
@@ -105,12 +113,15 @@ public class MyRPC {
                 byteBuf.writeBytes(body);
 
                 ch.writeAndFlush(byteBuf).sync();
-                CountDownLatch countDownLatch = new CountDownLatch(1);
-                staticUUID.add(header.requestId, ()->{
-                    countDownLatch.countDown();
-                });
-                countDownLatch.await();
-                return null;
+//                runable不能接受返回值，所以使用completable
+//                CountDownLatch countDownLatch = new CountDownLatch(1);
+//                staticUUID.add(header.requestId, ()->{
+//                    countDownLatch.countDown();
+//                });
+//                countDownLatch.await();
+                CompletableFuture<String> cf = new CompletableFuture<>();
+                staticUUID.add(header.requestId, cf);
+                return cf.get();
             }
 
             private header createHeader(byte[] body) {
@@ -124,16 +135,16 @@ public class MyRPC {
 
 class staticUUID{
     private static AtomicInteger repeatNum = new AtomicInteger(0);
-    private static ConcurrentHashMap<Long, Runnable> map = new ConcurrentHashMap<Long, Runnable>();
+    private static ConcurrentHashMap<Long, CompletableFuture> map = new ConcurrentHashMap<Long, CompletableFuture>();
 
-    public static void add(Long requestid, Runnable r){
+    public static void add(Long requestid, CompletableFuture r){
         map.putIfAbsent(requestid, r);
     }
-    public static void run(Long requestid){
-        Runnable runnable = map.get(requestid);
+    public static void run(requestMQ mess){
+        CompletableFuture runnable = map.get(mess.head.requestId);
         if(runnable != null){
-            runnable.run();
-            map.remove(requestid);
+            runnable.complete(mess.body.result);
+            map.remove(mess.head.requestId);
         }else {
             repeatNum.incrementAndGet();
         }
@@ -160,8 +171,7 @@ enum  clientFactory{
     volatile ConcurrentHashMap<InetSocketAddress, clientPool> outboxs = new ConcurrentHashMap<>();
 
     Random random = new Random();
-    int poolSize = 1;
-    int maxnum = 1;
+    int poolSize = 10;
 
     public synchronized NioSocketChannel getClient(InetSocketAddress address){
         if (outboxs.get(address) == null){
@@ -171,12 +181,12 @@ enum  clientFactory{
         int i = random.nextInt(clientPool.clients.length);
         System.out.println(clientPool.clients.length + " " + Thread.currentThread().getName() + "连接数：" + i);
         NioSocketChannel cha = clientPool.clients[i];
-        if (cha == null){
+        if (cha != null && cha.isActive()){
+            return cha;
+        }else {
             NioSocketChannel neety = createNeety(address);
             clientPool.clients[i] = neety;
             return neety;
-        }else {
-            return cha;
         }
     }
 
@@ -189,6 +199,7 @@ enum  clientFactory{
                     @Override
                     protected void initChannel(NioSocketChannel ch) throws Exception {
                         ChannelPipeline pipeline = ch.pipeline();
+                        pipeline.addLast(new requestDecode());
                         pipeline.addLast(new readHandler());
                     }
                 })
@@ -206,29 +217,30 @@ class requestDecode extends ByteToMessageDecoder{
 
     @Override
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf data, List<Object> list) throws Exception {
-        ByteBuf re = data.copy();
         while (data.readableBytes() >= 87){
             byte[] b = new byte[87];
             data.getBytes(data.readerIndex(), b);
 //            ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(b));
 //            header header = (header) objectInputStream.readObject();
             header header = MessageSer.messageDecode(b);
-            System.out.println("server" + header);
 
-            if (data.readableBytes() >= header.dataLength){
+            if (data.readableBytes() >= (header.dataLength + 87)){
                 data.readBytes(87);
                 byte[] by  = new byte[(int) header.dataLength];
                 data.readBytes(by);
 //                ObjectInputStream ob = new ObjectInputStream(new ByteArrayInputStream(by));
 //                content body = (content)ob.readObject();
-                content body = MessageSer.messageDecode(by);
-                System.out.println("server" + body);
-                list.add(new requestMQ(header, body));
+                if (header.flag == 0x14141414){
+                    content body = MessageSer.messageDecode(by);
+                    list.add(new requestMQ(header, body));
+                }else if(header.flag == 0x14141424){
+                    content body = MessageSer.messageDecode(by);
+                    list.add(new requestMQ(header, body));
+                }
             }else {
                 break;
             }
         }
-        channelHandlerContext.channel().writeAndFlush(re);
     }
 }
 
@@ -246,28 +258,8 @@ class readHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 //        super.channelRead(ctx, msg);
-        ByteBuf byteBuf = (ByteBuf) msg;
-        while (byteBuf.readableBytes() >= 87){
-            byte[] b = new byte[87];
-            byteBuf.getBytes(byteBuf.readerIndex(), b);
-//            ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(b));
-//            header o = (header)objectInputStream.readObject();
-            header o = MessageSer.messageDecode(b);
-            System.out.println("client"+o);
-
-            if (byteBuf.readableBytes() >= o.dataLength){
-                byteBuf.readBytes(87);
-                byte[] by  = new byte[(int) o.dataLength];
-                byteBuf.readBytes(by);
-//                ObjectInputStream ob = new ObjectInputStream(new ByteArrayInputStream(by));
-//                content body = (content)ob.readObject();
-                content body = MessageSer.messageDecode(by);
-                System.out.println("client" + body);
-                staticUUID.run(o.requestId);
-            }else {
-                break;
-            }
-        }
+        requestMQ byteBuf = (requestMQ) msg;
+        staticUUID.run(byteBuf);
     }
 }
 
@@ -275,8 +267,21 @@ class requestHandler extends ChannelInboundHandlerAdapter{
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         requestMQ data = (requestMQ) msg;
-//        System.out.println(data.head);
-//        System.out.println(data.body);
+
+        String name = Thread.currentThread().getName();
+        //异步处理逻辑
+        ctx.executor().parent().next().execute(()->{
+            content content = new content("io thread:" + name + "   处理逻辑 thread:" + Thread.currentThread().getName() + "      " + data.body.args[0]);
+            byte[] tail = MessageSer.messageEncode(content);
+            header header = new header(0x14141424, data.head.requestId, tail.length);
+            byte[] head = MessageSer.messageEncode(header);
+
+            ByteBuf byteBuf = UnpooledByteBufAllocator.DEFAULT.directBuffer(tail.length + head.length);
+            byteBuf.writeBytes(head);
+            byteBuf.writeBytes(tail);
+
+            ctx.writeAndFlush(byteBuf);
+        });
     }
 }
 
@@ -306,12 +311,17 @@ class content implements Serializable {
     String methodname;
     Class<?>[] methodType;
     Object[] args;
+    String result;
 
     public content(String name, String methodname, Class<?>[] methodType, Object[] args) {
         this.name = name;
         this.methodname = methodname;
         this.methodType = methodType;
         this.args = args;
+    }
+
+    public content(String result) {
+        this.result = result;
     }
 
     @Override
@@ -321,12 +331,13 @@ class content implements Serializable {
                 ", methodname='" + methodname + '\'' +
                 ", methodType=" + Arrays.toString(methodType) +
                 ", args=" + Arrays.toString(args) +
+                ", result='" + result + '\'' +
                 '}';
     }
 }
 
 interface car{
-    void hello(String string);
+    String hello(String string);
 }
 
 interface fly{
