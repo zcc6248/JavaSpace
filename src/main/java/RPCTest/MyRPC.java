@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class MyRPC {
 
-    private static final int CLIENT_NUM = 50;
+    private static final int CLIENT_NUM = 500;
     private static final int LOOPGROUP_NUM = 10;
     public static void main(String[] args) {
 
@@ -128,12 +128,12 @@ public class MyRPC {
                 return cf.get();
             }
 
-            private MessageHead createHeader(byte[] body) {
-                long uuid = Math.abs(UUID.randomUUID().getLeastSignificantBits());
-                MessageHead header = new MessageHead(0X14141414, uuid, body.length);
-                return header;
-            }
         });
+    }
+    private static MessageHead createHeader(byte[] body) {
+        long uuid = Math.abs(UUID.randomUUID().getLeastSignificantBits());
+        MessageHead header = new MessageHead(0X14141414, uuid, body.length);
+        return header;
     }
 }
 
@@ -219,6 +219,10 @@ enum SocketChannelPoolFactory {
 
 class DecodeHandler extends ByteToMessageDecoder{
 
+    /**
+     * 解决粘包问题
+     * 内核接收队列中可能会有很多数据同时到达未来得及处理
+     */
     @Override
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf data, List<Object> list) throws Exception {
         while (data.readableBytes() >= 92){
@@ -272,7 +276,6 @@ class ServerHandler extends ChannelInboundHandlerAdapter{
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         UnpackMessage data = (UnpackMessage) msg;
 
-        String name = Thread.currentThread().getName();
         //异步处理逻辑
         ctx.executor().parent().next().execute(()->{
             Object object = MappingImpl.getMapping(data.body.name);
