@@ -64,8 +64,8 @@ public class MyRPC {
     private static void serverStart(){
         MyCar myCar = new MyCar();
         MyFly myFly = new MyFly();
-        MappingImpl.addMapping(Icar.class.getName(), myCar);
-        MappingImpl.addMapping(Ifly.class.getName(), myFly);
+        Dispatcher.addMapping(Icar.class.getName(), myCar);
+        Dispatcher.addMapping(Ifly.class.getName(), myFly);
 
         NioEventLoopGroup eventExecutors = new NioEventLoopGroup(LOOPGROUP_NUM);
         ServerBootstrap serverBootstrap = new ServerBootstrap();
@@ -278,7 +278,7 @@ class ServerHandler extends ChannelInboundHandlerAdapter{
 
         //异步处理逻辑
         ctx.executor().parent().next().execute(()->{
-            Object object = MappingImpl.getMapping(data.body.name);
+            Object object = Dispatcher.getMapping(data.body.name);
             try {
                 Method method = object.getClass().getMethod(data.body.methodname, data.body.methodType);
                 Object invoke = method.invoke(object, data.body.args);
@@ -365,7 +365,7 @@ class MyFly implements Ifly {
     }
 }
 
-class MappingImpl {
+class Dispatcher {
     private static ConcurrentHashMap<String, Object> mappings = new ConcurrentHashMap<>();
 
     public static void addMapping(String key, Object obj){
