@@ -3,7 +3,7 @@ package RPCDemo.rpc.transport;
 import RPCDemo.rpc.UnpackMessage;
 import RPCDemo.rpc.protocol.MessageBody;
 import RPCDemo.rpc.protocol.MessageHead;
-import RPCTest.MessageSer;
+import RPC.MessageSer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
@@ -18,6 +18,7 @@ public class DecodeHandler extends ByteToMessageDecoder {
      */
     @Override
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf data, List<Object> list) throws Exception {
+        //做了两件事1、解码 2、拆包
         while (data.readableBytes() >= 105){
             byte[] b = new byte[105];
             data.getBytes(data.readerIndex(), b);

@@ -1,4 +1,4 @@
-package RPCTest;
+package RPC;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;

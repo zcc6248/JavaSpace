@@ -1,4 +1,4 @@
-package RPCTest;
+package RPC;
 
 import java.io.*;
 
