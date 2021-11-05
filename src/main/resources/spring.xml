@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        https://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-3.2.xsd
+        http://www.springframework.org/schema/aop https://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!--开启自动化注入-->
+    <context:annotation-config />
+<!--    开启扫描实例化bean-->
+    <context:component-scan base-package="SpringDemo.auto" />
+    <task:annotation-driven />
+    <aop:aspectj-autoproxy />
+    <bean id="user" class="SpringDemo.auto.dao.user">
+        <property name="uid" value="10"></property>
+        <property name="name" value="张三"></property>
+    </bean>
+<!--    <bean id="userFactory" class="SpringDemo.auto.util.userFactory">-->
+<!--        &lt;!&ndash;set方法注入&ndash;&gt;-->
+<!--        &lt;!&ndash;        <property name="user"  ref="user"></property>&ndash;&gt;-->
+<!--        &lt;!&ndash;构造器注入&ndash;&gt;-->
+<!--        <constructor-arg name="user" ref="user"></constructor-arg>-->
+<!--    </bean>-->
+
+</beans>
